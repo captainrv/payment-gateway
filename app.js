@@ -1,8 +1,14 @@
 // Import Express.js
 const express = require('express');
 const Razorpay = require("razorpay");
+const cors = require("cors");
+
 // Create an Express app
 const app = express();
+
+// CORS allow
+app.use(cors());
+
 const razorpay = new Razorpay({
   key_id: process.env.KEY,
   key_secret: process.env.SECRET_KEY
