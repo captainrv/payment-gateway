@@ -30,22 +30,44 @@ app.get('/', (req, res) => {
   res.status(200).send({ payload: payload });
 });
 
-app.get("/order", async (req, res) => {
+// Create Order API (POST)
+app.post("/order", async (req, res) => {
+
+  const { type, id, amount, name } = req.body;
+
+  if (!amount) {
+    return res.status(400).json({
+      error: "Amount required"
+    });
+  }
 
   const options = {
-    amount: 50000, // 500 rs (paise me)
+    amount: amount, // paise
     currency: "INR",
-    receipt: "receipt_order_1"
+    receipt: `${type}_${id}`
   };
 
   try {
+
     const order = await razorpay.orders.create(options);
-    res.json(order);
+
+    res.json({
+      success: true,
+      order: order
+    });
+
   } catch (err) {
-    res.status(500).send(err);
+
+    console.error(err);
+
+    res.status(500).json({
+      error: "Order creation failed"
+    });
+
   }
 
 });
+
 
 // Route for POST requests
 app.post('/', (req, res) => {
