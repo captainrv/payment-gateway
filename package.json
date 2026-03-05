@@ -1,0 +1,23 @@
+{
+  "name": "paymant-gateway",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/captainrv/payment-gateway#readme",
+  "bugs": {
+    "url": "https://github.com/captainrv/payment-gateway/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/captainrv/payment-gateway.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
