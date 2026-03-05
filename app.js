@@ -1,8 +1,13 @@
 // Import Express.js
 const express = require('express');
-
+const Razorpay = require("razorpay");
 // Create an Express app
 const app = express();
+const razorpay = new Razorpay({
+  key_id: process.env.KEY,
+  key_secret: process.env.SECRET_KEY
+});
+
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -15,6 +20,23 @@ app.get('/', (req, res) => {
   const payload = req.query;
   console.log(JSON.stringify(payload, null, 2));
   res.status(200).send({ payload: payload });
+});
+
+app.get("/order", async (req, res) => {
+
+  const options = {
+    amount: 50000, // 500 rs (paise me)
+    currency: "INR",
+    receipt: "receipt_order_1"
+  };
+
+  try {
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+
 });
 
 // Route for POST requests
