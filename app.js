@@ -1,101 +1,136 @@
 // Import Express.js
 const express = require('express');
-const Razorpay = require("razorpay");
+const crypto = require("crypto");
 const cors = require("cors");
 
-// Create an Express app
+// Create app
 const app = express();
-
-// CORS allow
 app.use(cors());
-
-const razorpay = new Razorpay({
-  key_id: process.env.KEY,
-  key_secret: process.env.SECRET_KEY
-});
-
-
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Set port and verify_token
 const port = process.env.PORT || 3000;
 
+// 🔐 PayU credentials
+const MERCHANT_KEY = process.env.PAYU_KEY;
+const SALT = process.env.PAYU_SALT;
 
+// ✅ CREATE PAYMENT API
+app.post("/payu/create", (req, res) => {
 
-// Route for GET requests
-app.get('/', (req, res) => {
-  const payload = req.query;
-  console.log(JSON.stringify(payload, null, 2));
-  res.status(200).send({ payload: payload });
-});
-
-// Create Order API (POST)
-app.post("/order", async (req, res) => {
-
-  const { type, id, amount, name } = req.body;
+  const { type, id, amount, name, email } = req.body;
 
   if (!amount) {
-    return res.status(400).json({
-      error: "Amount required"
-    });
+    return res.status(400).json({ error: "Amount required" });
   }
 
-  const options = {
-    amount: amount, // paise
-    currency: "INR",
-    receipt: `${type}_${id}`
-  };
+  const txnid = `${type}_${id}_${Date.now()}`;
+  const productinfo = type;
 
-  try {
+  // 🔥 HASH STRING
+  const hashString =
+    MERCHANT_KEY + "|" +
+    txnid + "|" +
+    amount + "|" +
+    productinfo + "|" +
+    name + "|" +
+    email +
+    "|||||||||||" +
+    SALT;
 
-    const order = await razorpay.orders.create(options);
+  const hash = crypto
+    .createHash("sha512")
+    .update(hashString)
+    .digest("hex");
 
-    res.json({
-      success: true,
-      order: order
-    });
+  // ✅ PayU form data return
+  res.json({
+    key: MERCHANT_KEY,
+    txnid: txnid,
+    amount: amount,
+    productinfo: productinfo,
+    firstname: name,
+    email: email,
+    phone: "9999999999",
 
-  } catch (err) {
+    // 🔗 redirect URLs
+    surl: "https://payment-gateway-2u5d.onrender.com/payu/success",
+    furl: "https://payment-gateway-2u5d.onrender.com/payu/failure",
 
-    console.error(err);
+    hash: hash,
 
-    res.status(500).json({
-      error: "Order creation failed"
-    });
-
-  }
+    // 🧠 multi-company tracking
+    udf1: type,
+    udf2: id
+  });
 
 });
 
+---
 
-// Route for POST requests
-app.post('/', (req, res) => {
-  console.log(JSON.stringify(req.body, null, 2));
-  res.status(200).send({ data: req.body });
-});
+# 🔔 SUCCESS CALLBACK
 
+app.post("/payu/success", (req, res) => {
 
+  console.log("SUCCESS:", req.body);
 
-app.get("/order", async (req, res) => {
+  const {
+    txnid,
+    amount,
+    status,
+    hash,
+    udf1,
+    udf2
+  } = req.body;
 
-  const options = {
-    amount: 50000, // 500 rs (paise me)
-    currency: "INR",
-    receipt: "receipt_order_1"
-  };
+  // 🔐 VERIFY HASH (IMPORTANT)
+  const reverseHashString =
+    SALT + "|" +
+    status + "|||||||||||" +
+    req.body.email + "|" +
+    req.body.firstname + "|" +
+    req.body.productinfo + "|" +
+    amount + "|" +
+    txnid + "|" +
+    MERCHANT_KEY;
 
-  try {
-    const order = await razorpay.orders.create(options);
-    res.json(order);
-  } catch (err) {
-    res.status(500).send(err);
+  const verifyHash = crypto
+    .createHash("sha512")
+    .update(reverseHashString)
+    .digest("hex");
+
+  if (verifyHash !== hash) {
+    return res.send("Hash mismatch ❌");
   }
 
+  // ✅ payment verified
+  console.log("Payment Verified ✅");
+
+  // 👉 multi-company
+  console.log("Type:", udf1);
+  console.log("ID:", udf2);
+
+  res.send("Payment Success");
+
 });
 
+---
 
-// Start the server
+# ❌ FAILURE CALLBACK
+
+app.post("/payu/failure", (req, res) => {
+  console.log("FAILED:", req.body);
+  res.send("Payment Failed");
+});
+
+---
+
+# ROOT
+
+app.get("/", (req, res) => {
+  res.send("PayU Server Running 🚀");
+});
+
+// START SERVER
 app.listen(port, () => {
-  console.log(`\nListening on port ${port}\n`);
+  console.log(`Listening on port ${port}`);
 });
